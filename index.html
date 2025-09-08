@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Image Recognition API</title>
+    <title>Advanced Fraud Detection</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
     <style>
@@ -12,82 +12,159 @@
             background-color: #0d1117;
             color: #c9d1d9;
         }
+        .result-safe {
+            background-color: #16a34a; /* Tailwind green-600 */
+        }
+        .result-low {
+            background-color: #ca8a04; /* Tailwind yellow-600 */
+        }
+        .result-high {
+            background-color: #dc2626; /* Tailwind red-600 */
+        }
     </style>
 </head>
 <body class="flex items-center justify-center min-h-screen p-4">
-    <div class="w-full max-w-lg bg-gray-800 rounded-3xl shadow-2xl p-8 text-center">
-        <h1 class="text-3xl font-bold mb-6 text-white">Image Recognition API</h1>
-        <p class="text-gray-400 mb-6">Upload an image to see what our API thinks it is.</p>
+    <div class="w-full max-w-lg bg-gray-800 rounded-3xl shadow-2xl p-8">
+        <h1 class="text-3xl font-bold mb-6 text-center text-white">Advanced Fraud Detection</h1>
+        <p class="text-gray-400 text-center mb-8">Enter transaction details to check for potential fraud using a scoring model.</p>
 
-        <input type="file" id="image-upload" accept="image/*" class="block w-full text-sm text-gray-500
-            file:mr-4 file:py-2 file:px-4
-            file:rounded-full file:border-0
-            file:text-sm file:font-semibold
-            file:bg-blue-50 file:text-blue-700
-            hover:file:bg-blue-100" />
-        
-        <div id="image-preview-container" class="mt-8 mb-6 hidden">
-            <img id="image-preview" class="max-w-full h-auto rounded-xl mx-auto" src="#" alt="Image Preview" />
-        </div>
+        <form id="transaction-form" class="space-y-6">
+            <div>
+                <label for="amount" class="block text-sm font-medium text-gray-400 mb-1">Transaction Amount ($)</label>
+                <input type="number" id="amount" class="w-full p-3 rounded-xl bg-gray-900 text-white border-none focus:outline-none focus:ring-2 focus:ring-blue-500" placeholder="e.g., 250.00" required>
+            </div>
+            <div>
+                <label for="location" class="block text-sm font-medium text-gray-400 mb-1">Transaction Location</label>
+                <select id="location" class="w-full p-3 rounded-xl bg-gray-900 text-white border-none focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <option value="">Select a location</option>
+                    <option value="domestic">Domestic</option>
+                    <option value="international">International</option>
+                </select>
+            </div>
+            <div>
+                <label for="time" class="block text-sm font-medium text-gray-400 mb-1">Time of Day</label>
+                <select id="time" class="w-full p-3 rounded-xl bg-gray-900 text-white border-none focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <option value="">Select a time</option>
+                    <option value="day">Day (6 AM - 6 PM)</option>
+                    <option value="night">Night (6 PM - 6 AM)</option>
+                </select>
+            </div>
+            <div>
+                <label for="device" class="block text-sm font-medium text-gray-400 mb-1">Device Type</label>
+                <select id="device" class="w-full p-3 rounded-xl bg-gray-900 text-white border-none focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <option value="">Select a device</option>
+                    <option value="known">Known Device (Used Previously)</option>
+                    <option value="unknown">New/Unknown Device</option>
+                </select>
+            </div>
+            <div>
+                <label for="history" class="block text-sm font-medium text-gray-400 mb-1">Transaction History</label>
+                <select id="history" class="w-full p-3 rounded-xl bg-gray-900 text-white border-none focus:outline-none focus:ring-2 focus:ring-blue-500" required>
+                    <option value="">Select transaction history</option>
+                    <option value="frequent">Frequent User</option>
+                    <option value="first">First Time Transaction</option>
+                </select>
+            </div>
+            <button type="submit" class="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-full shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105">Detect Fraud</button>
+        </form>
 
-        <button id="analyze-btn" class="w-full py-3 px-6 bg-blue-600 text-white font-semibold rounded-full shadow-lg hover:bg-blue-700 transition-all transform hover:scale-105" disabled>Analyze Image</button>
-
-        <div id="result" class="mt-8 p-4 bg-gray-700 rounded-xl hidden">
-            <p id="result-text" class="text-lg font-medium text-white"></p>
+        <div id="result" class="mt-8 p-4 rounded-xl text-center hidden">
+            <p id="result-text" class="text-xl font-bold"></p>
         </div>
     </div>
 
     <script>
         document.addEventListener('DOMContentLoaded', () => {
-            const imageUpload = document.getElementById('image-upload');
-            const imagePreviewContainer = document.getElementById('image-preview-container');
-            const imagePreview = document.getElementById('image-preview');
-            const analyzeBtn = document.getElementById('analyze-btn');
+            const form = document.getElementById('transaction-form');
+            const amountInput = document.getElementById('amount');
+            const locationInput = document.getElementById('location');
+            const timeInput = document.getElementById('time');
+            const deviceInput = document.getElementById('device');
+            const historyInput = document.getElementById('history');
             const resultDiv = document.getElementById('result');
             const resultText = document.getElementById('result-text');
 
-            const mockApiResponses = [
-                "A cat sitting on a keyboard.",
-                "A beautiful landscape with mountains and a lake.",
-                "A vibrant bouquet of flowers.",
-                "A person riding a bicycle.",
-                "A cityscape at night.",
-                "A delicious-looking pizza.",
-                "A dog playing fetch in a park."
-            ];
+            form.addEventListener('submit', (e) => {
+                e.preventDefault();
 
-            imageUpload.addEventListener('change', (event) => {
-                const file = event.target.files[0];
-                if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (e) => {
-                        imagePreview.src = e.target.result;
-                        imagePreviewContainer.classList.remove('hidden');
-                        analyzeBtn.disabled = false;
-                        resultDiv.classList.add('hidden');
-                    };
-                    reader.readAsDataURL(file);
-                } else {
-                    imagePreviewContainer.classList.add('hidden');
-                    analyzeBtn.disabled = true;
-                    resultDiv.classList.add('hidden');
+                // Get form values
+                const amount = parseFloat(amountInput.value);
+                const location = locationInput.value;
+                const time = timeInput.value;
+                const device = deviceInput.value;
+                const history = historyInput.value;
+
+                let fraudScore = 0;
+                const reasons = [];
+
+                // --- Fraud Scoring Logic ---
+                // Base points for risk factors
+                if (location === 'international') {
+                    fraudScore += 5;
+                    reasons.push("International transaction.");
                 }
-            });
+                if (time === 'night') {
+                    fraudScore += 3;
+                    reasons.push("Transaction occurred at night.");
+                }
+                if (device === 'unknown') {
+                    fraudScore += 4;
+                    reasons.push("Transaction from a new/unknown device.");
+                }
+                if (history === 'first') {
+                    fraudScore += 5;
+                    reasons.push("First time transaction by this user.");
+                }
 
-            analyzeBtn.addEventListener('click', () => {
-                if (!imageUpload.files[0]) return;
-
-                // Show a loading state
-                resultText.textContent = "Analyzing image...";
-                resultDiv.classList.remove('hidden');
+                // Amount-based scoring
+                if (amount > 1000) {
+                    fraudScore += 10;
+                    reasons.push("Very high transaction amount.");
+                } else if (amount > 500) {
+                    fraudScore += 7;
+                    reasons.push("High transaction amount.");
+                } else if (amount > 200) {
+                    fraudScore += 3;
+                    reasons.push("Moderate transaction amount.");
+                } else if (amount < 20) {
+                    fraudScore += 2;
+                    reasons.push("Very low, potentially suspicious amount.");
+                }
                 
-                // Simulate an API call delay
+                // --- Show loading state ---
+                resultDiv.classList.remove('result-safe', 'result-low', 'result-high');
+                resultDiv.classList.add('bg-gray-700');
+                resultText.textContent = "Analyzing...";
+                resultDiv.classList.remove('hidden');
+
+                // Simulate processing time
                 setTimeout(() => {
-                    const randomIndex = Math.floor(Math.random() * mockApiResponses.length);
-                    resultText.textContent = `API Result: ${mockApiResponses[randomIndex]}`;
-                }, 1500);
+                    let status = "Legitimate Transaction.";
+                    let statusColorClass = "result-safe";
+
+                    if (fraudScore > 12) {
+                        status = `HIGH RISK - Potential Fraud!`;
+                        statusColorClass = "result-high";
+                    } else if (fraudScore > 7) {
+                        status = `MEDIUM RISK - Review Required.`;
+                        statusColorClass = "result-low";
+                    } else if (fraudScore > 0) {
+                        status = `LOW RISK - Possible Suspicion.`;
+                        statusColorClass = "result-safe"; // Still green, but with a note
+                    }
+
+                    const reasonString = reasons.length > 0 ? `Reason(s): ${reasons.join(" ")}` : "";
+                    resultDiv.classList.remove('bg-gray-700');
+                    resultDiv.classList.add(statusColorClass);
+                    resultText.innerHTML = `
+                        <p>${status}</p>
+                        ${reasons.length > 0 ? `<p class="text-sm font-normal mt-1">${reasonString}</p>` : ''}
+                        <p class="text-sm font-normal mt-1">Fraud Score: ${fraudScore}</p>
+                    `;
+                }, 1000);
             });
         });
     </script>
 </body>
 </html>
+
